@@ -17,6 +17,9 @@ LDLIBS    = $(shell gsl-config --libs)
 main: main.o two-cubes-integrand2.o
 	${CC} $(LFLAGS) -o $@ $^ $(LDLIBS)
 
+vegas: VEGAS.o two-cubes-integrand2.o
+	${CC} $(LFLAGS) -o $@ $^ $(LDLIBS)
+
 res: mc-pi
 	./mc-pi > mc_pi.res
 

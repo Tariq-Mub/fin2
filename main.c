@@ -5,22 +5,17 @@
 #include <math.h>
 
 #include <gsl/gsl_rng.h>
-#include <gsl/gsl_statistics.h>
+#include <gsl/gsl_monte.h>
+#include <gsl/gsl_monte_vegas.h>
 
-/* mc_pi.c */
-double mc_pi (long m, gsl_rng * r);
 double g (double *t, size_t dim, void *params);
-
-//#define POINTS 524288           /* 2^19, initial number of random points to generate */
-//#define NEXP 64                 /* number of experiments for each value of points */
-//#define M 11                    /* number of different points values */
 
 int main (void)
 {
     gsl_rng *r;
     unsigned long seed = 1UL;
     size_t dim = 6;
-    int calls = 1000000;
+    int calls = 10000000;
     double t[6];
     int i, j, l;
     int np = 20;
@@ -48,10 +43,43 @@ int main (void)
             sums += g (t, dim, &dist);
         }
         energy = sums / calls;
-        printf ("%10.8f   %10.8f    %10.8f\n", dist, energy, -2./pow(dist, 3.));
+        printf ("%10.8f   %10.8f    %10.8f\n", dist, energy, -2. / pow (dist,
+                3.));
         fflush (stdout);
         dist += dstep;
     }
+
+    double xl[] = { 0., 0., 0., 0., 0., 0. };
+    double xu[] = { 1., 1., 1., 1., 1., 1. };
+    double res, err;
+
+    gsl_monte_function G = { &g, dim, &dist };
+
+    gsl_monte_vegas_state *sv = gsl_monte_vegas_alloc (dim);
+
+    gsl_monte_vegas_init (sv);
+
+    printf ("# Dist    Result ErrEst Dipol\n");
+    dist = dmin;
+    for (i = 0; i < np; i++)
+    {
+
+        gsl_monte_vegas_integrate (&G, xl, xu, dim, (size_t) calls / 5, r, sv, &res,
+            &err);
+
+        do
+        {
+            gsl_monte_vegas_integrate (&G, xl, xu, dim, (size_t) calls, r, sv, &res,
+                &err);
+        }
+        while (fabs (gsl_monte_vegas_chisq (sv) - 1.0) > 0.2);
+        printf ("%10.8f   %10.8f    %10.8f    %10.8f\n", dist, res, err,
+            -2. / pow (dist, 3.));
+        fflush (stdout);
+        dist += dstep;
+    }
+
+    gsl_monte_vegas_free (sv);
 
     gsl_rng_free (r);
 
